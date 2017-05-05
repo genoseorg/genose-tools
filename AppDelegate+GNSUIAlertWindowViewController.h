@@ -35,6 +35,7 @@
 @property (strong, nonatomic) UILabel* _Nullable  alertView_label;
 @property (strong, nonatomic) NSMutableArray <UIButton *>* _Nullable actionsBtns ;
 @property (strong, nonatomic) NSMutableArray <UIAlertAction *> * _Nullable _actions;
+@property (nonatomic) BOOL dismissAtClick;
 
 
 -(void)showMessage:(nullable NSString*)message title:(nullable NSString*)title withActions:(nullable id )actions completion:(void ( ^ _Nullable ) (_Nullable id actionHandler)) completionEvent :(nullable id)usePersonnalisedParams  presentationStyle:(UIAlertControllerStyle) style;
