@@ -234,8 +234,15 @@ static GNSUIAlertWindowViewController *alertViewController;
             
         }
         
-        if (((BOOL)usePersonnalisedParams) != NO && [usePersonnalisedParams isKindOfClass: [NSDictionary class] ] && (nil != [usePersonnalisedParams objectForKey:@"dismissViewController"] ) ){
-            dismissAtClick =   (BOOL)[usePersonnalisedParams objectForKey:@"dismissViewController"] ;
+        NSLog(@" dismiss  ?? ::: %@ ", [usePersonnalisedParams objectForKey:@"dismissViewControllerAnimated"]);
+        id dismissableBtnsPrefs = nil;
+        if ( ((BOOL)usePersonnalisedParams) != NO && [usePersonnalisedParams isKindOfClass: [NSDictionary class] ] && (nil != [usePersonnalisedParams objectForKey:@"dismissViewControllerAnimated"] ) ){
+            
+            if(  ([  [usePersonnalisedParams objectForKey:@"dismissViewControllerAnimated"] isKindOfClass:[NSString class]] ) ){
+                dismissAtClick =   (BOOL)([[usePersonnalisedParams objectForKey:@"dismissViewControllerAnimated"] isEqualToString: @"YES"]);
+            }else if([[usePersonnalisedParams objectForKey:@"dismissViewControllerAnimated"] isKindOfClass: [NSArray class] ]){
+                dismissableBtnsPrefs = [usePersonnalisedParams objectForKey:@"dismissViewControllerAnimated"];
+            }
         }
         
         /* ************** ************** ************** ************** ************** */
@@ -243,12 +250,15 @@ static GNSUIAlertWindowViewController *alertViewController;
         /* ************** ************** ************** ************** ************** */
         
         // *********************
+        int idxBtn = 0;
         if(actions != nil && [actions isKindOfClass:[NSArray class]])
         {
             for (id actionsIn in actions) {
                 if([actionsIn isKindOfClass:[UIAlertAction class]])
                 {
-                    
+                    bool btnDoDismiss = (bool) ( (nil != dismissableBtnsPrefs && [dismissableBtnsPrefs count] && ( [dismissableBtnsPrefs count] >= idxBtn) ) ?
+                    ([[dismissableBtnsPrefs objectAtIndex:idxBtn] isEqualToString:@"YES"]) : dismissAtClick );
+                    NSLog(@" should dissmis :: %d ", btnDoDismiss);
                     if(alertViewController_showed != self)
                     {
                         void (^actionsIncompletionEvent) (UIAlertAction * _Nonnull action) = (( nil !=   [actionsIn valueForKey:@"_handler"] )? [actionsIn valueForKey:@"_handler"]:  [actionsIn valueForKey:@"handler"]) ;
@@ -260,7 +270,10 @@ static GNSUIAlertWindowViewController *alertViewController;
                             
                             if(actionsIncompletionEvent != nil)
                                 actionsIncompletionEvent(action);
-                            if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && dismissAtClick){
+                            
+                            NSLog(@" did should dissmis :: %d ", btnDoDismiss);
+                            
+                            if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && btnDoDismiss){
                                 [windowAlertCntl_presented dismissViewControllerAnimated:YES completion:^{
                                     ;;
                                 }];
@@ -270,8 +283,10 @@ static GNSUIAlertWindowViewController *alertViewController;
                         
                         [alertViewController_showed addAction: addactionsIn];
                     }else{
-                        [alertViewController_showed addAction: actionsIn];
+                        [alertViewController_showed addAction: actionsIn :btnDoDismiss];
                     }
+                    
+                    idxBtn  ++;
                 }
             }
         }else if(actions != nil && [actions isKindOfClass:[UIAlertAction class]])
@@ -364,7 +379,12 @@ static GNSUIAlertWindowViewController *alertViewController;
 }
 
 
-- (void)addAction:(UIAlertAction *)action{
+- (void)addAction:(UIAlertAction *)action
+{
+    
+}
+-(void)addAction:(nullable UIAlertAction *)action :(BOOL)shouldBtnDoDismiss
+{
     
     if(alertViewController ==nil) alertViewController = self; // [[GNSUIAlertWindowViewController alloc]init];
     if(actionsBtns == nil) actionsBtns = [NSMutableArray array];
