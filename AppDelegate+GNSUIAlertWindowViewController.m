@@ -18,7 +18,7 @@ static GNSUIAlertWindowViewController *alertViewController;
 
 -(void)showMessage:(NSString*)message
 {
-   [self showMessage:message title:nil withActions:nil completion:nil :nil];
+    [self showMessage:message title:nil withActions:nil completion:nil :nil];
 }
 
 -(void)showMessage:(NSString*)message presentationStyle:(UIAlertControllerStyle) style
@@ -32,7 +32,7 @@ static GNSUIAlertWindowViewController *alertViewController;
 {
     if(alertViewController ==nil) alertViewController = [[GNSUIAlertWindowViewController alloc]init];
     [alertViewController showMessage:message title:title withActions:nil completion:nil :nil presentationStyle:UIAlertControllerStyleActionSheet];
- 
+    
 }
 
 -(void)showMessage:(NSString*)message title:(NSString*)title  presentationStyle:(UIAlertControllerStyle) style
@@ -62,6 +62,7 @@ static GNSUIAlertWindowViewController *alertViewController;
 @end
 
 @implementation GNSUIAlertWindowViewController
+@synthesize  dismissAtClick;
 @synthesize  windowviewcntl_presented;
 @synthesize  alertView_;
 @synthesize  alertView_label;
@@ -101,7 +102,7 @@ static GNSUIAlertWindowViewController *alertViewController;
     [_actions removeAllObjects];
     
     @try {
-        
+        dismissAtClick = YES;
         title = ((title == nil)?@"Information":title);
         message = ((message == nil)?@"...":message);
         
@@ -226,11 +227,15 @@ static GNSUIAlertWindowViewController *alertViewController;
             
         }else{
             alertViewController_showed =  (id)   [UIAlertController
-                                     alertControllerWithTitle: title
-                                     message:message
-                                     preferredStyle:alertStyle];
+                                                  alertControllerWithTitle: title
+                                                  message:message
+                                                  preferredStyle:alertStyle];
             
             
+        }
+        
+        if (((BOOL)usePersonnalisedParams) != NO && [usePersonnalisedParams isKindOfClass: [NSDictionary class] ] && (nil != [usePersonnalisedParams objectForKey:@"dismissViewController"] ) ){
+            dismissAtClick =   (BOOL)[usePersonnalisedParams objectForKey:@"dismissViewController"] ;
         }
         
         /* ************** ************** ************** ************** ************** */
@@ -243,7 +248,30 @@ static GNSUIAlertWindowViewController *alertViewController;
             for (id actionsIn in actions) {
                 if([actionsIn isKindOfClass:[UIAlertAction class]])
                 {
-                    [alertViewController_showed addAction: actionsIn];
+                    
+                    if(alertViewController_showed != self)
+                    {
+                        void (^actionsIncompletionEvent) (UIAlertAction * _Nonnull action) = (( nil !=   [actionsIn valueForKey:@"_handler"] )? [actionsIn valueForKey:@"_handler"]:  [actionsIn valueForKey:@"handler"]) ;
+                        
+                        // ::  id windowAlertCntl = alertViewController;
+                        id windowAlertCntl_presented = windowviewcntl_presented;
+                        
+                        id addactionsIn  = [UIAlertAction actionWithTitle: (((UIAlertAction*)actionsIn).title) style:(((UIAlertAction*)actionsIn).style) handler: ^(UIAlertAction * _Nonnull action) {
+                            
+                            if(actionsIncompletionEvent != nil)
+                                actionsIncompletionEvent(action);
+                            if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && dismissAtClick){
+                                [windowAlertCntl_presented dismissViewControllerAnimated:YES completion:^{
+                                    ;;
+                                }];
+                            }
+                        }];
+                        
+                        
+                        [alertViewController_showed addAction: addactionsIn];
+                    }else{
+                        [alertViewController_showed addAction: actionsIn];
+                    }
                 }
             }
         }else if(actions != nil && [actions isKindOfClass:[UIAlertAction class]])
@@ -295,7 +323,7 @@ static GNSUIAlertWindowViewController *alertViewController;
                     }
                     if(action_forwardArg_argSelector == nil && action_forwardArg_argBlockInvoke == nil)
                     {
-                        if(windowviewcntl_presented){
+                        if(windowviewcntl_presented && dismissAtClick){
                             [windowviewcntl_presented dismissViewControllerAnimated:YES completion:^{
                                 ;;
                             }];
@@ -416,10 +444,10 @@ static GNSUIAlertWindowViewController *alertViewController;
             [windowAlertCntl  dismissViewControllerAnimated:YES completion:^{
                 ;;
             }];
-            if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]]){
-            [windowAlertCntl_presented dismissViewControllerAnimated:YES completion:^{
-                ;;
-            }];
+            if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && dismissAtClick){
+                [windowAlertCntl_presented dismissViewControllerAnimated:YES completion:^{
+                    ;;
+                }];
             }
         };
         
@@ -433,12 +461,12 @@ static GNSUIAlertWindowViewController *alertViewController;
                 [windowAlertCntl  dismissViewControllerAnimated:YES completion:^{
                     ;;
                 }];
-                if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]]){
+                if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && dismissAtClick){
                     [windowAlertCntl_presented dismissViewControllerAnimated:YES completion:^{
                         ;;
                     }];
                 }
-
+                
             };
             
         }
