@@ -55,6 +55,11 @@ static GNSUIAlertWindowViewController *alertViewController;
     [alertViewController showMessage:message title:title withActions:actions completion:completionEvent :usePersonnalisedParams presentationStyle:style];
 }
 
+-(id)alert
+{
+    if(alertViewController ==nil) alertViewController = [[GNSUIAlertWindowViewController alloc]init];
+    return alertViewController;
+}
 @end
 
 @interface GNSUIAlertWindowViewController ()
@@ -62,12 +67,23 @@ static GNSUIAlertWindowViewController *alertViewController;
 @end
 
 @implementation GNSUIAlertWindowViewController
-@synthesize  dismissAtClick;
-@synthesize  windowviewcntl_presented;
-@synthesize  alertView_;
-@synthesize  alertView_label;
-@synthesize  actionsBtns;
-@synthesize  _actions;
+
+@synthesize     dismissAtClick;
+
+@synthesize     windowviewcntl_presented;
+@synthesize     alertView_;
+@synthesize     alertView_message;
+@synthesize     alertView_icon;
+@synthesize     alertView_title;
+
+@synthesize     actionsBtns;
+@synthesize     _actions;
+@synthesize     _actionsDissmeable;
+
+@synthesize     ui_preferredStyle;
+@synthesize     actionsBtnsColor;
+
+
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -97,16 +113,18 @@ static GNSUIAlertWindowViewController *alertViewController;
     if(alertViewController ==nil) alertViewController = self;
     if(actionsBtns == nil) actionsBtns = [NSMutableArray array];
     if(_actions == nil) _actions = [NSMutableArray array];
+    if(_actionsDissmeable == nil) _actionsDissmeable = [NSMutableArray array];
     
     [actionsBtns removeAllObjects];
     [_actions removeAllObjects];
+    [_actionsDissmeable removeAllObjects];
     
     @try {
         dismissAtClick = YES;
         title = ((title == nil)?@"Information":title);
         message = ((message == nil)?@"...":message);
         
-        u_long alertStyle = style ; // :: UIAlertControllerStyleActionSheet; // :: UIAlertActionStyleDefault
+        ui_preferredStyle = UIAlertControllerStyleActionSheet ; // :: UIAlertControllerStyleActionSheet; // :: UIAlertControllerStyleAlert
         
         /* ************** ************** ************** ************** ************** */
         
@@ -166,7 +184,7 @@ static GNSUIAlertWindowViewController *alertViewController;
             //:: windowviewcntl_presented = windowviewcntl;;
             ;;
             // [ alertViewController presentViewController:alertViewController animated:YES completion:nil];
-            // :: alertStyle = UIAlertControllerStyleAlert;
+            // :: ui_preferredStyle = UIAlertControllerStyleAlert;
             
         }
         
@@ -179,12 +197,17 @@ static GNSUIAlertWindowViewController *alertViewController;
         // UIAlertController * alertViewController = nil;
         if( ((BOOL)usePersonnalisedParams) != NO && ![usePersonnalisedParams isKindOfClass: [NSDictionary class] ] ){
             [NSException raise:NSInvalidArgumentException format:@" Erreur :: actions type (%@) is not acceptable argument ....", action_argType];
-        }else if (((BOOL)usePersonnalisedParams) != NO && [usePersonnalisedParams isKindOfClass: [NSDictionary class] ] && (BOOL)[usePersonnalisedParams objectForKey:@"usePersonnalisedParams"] ){
+        }else if (((BOOL)usePersonnalisedParams) != NO && [usePersonnalisedParams isKindOfClass: [NSDictionary class] ]
+                  && (BOOL)[usePersonnalisedParams objectForKey:@"usePersonnalisedParams"]
+                  && [ [usePersonnalisedParams objectForKey:@"usePersonnalisedParams"] isKindOfClass: [NSString class] ]
+                  && [ [usePersonnalisedParams objectForKey:@"usePersonnalisedParams"] isEqualToString: @"YES"]
+                  ){
             
-            
+            // :: Build Alert View
             alertViewController = self;// ::[[UIViewController alloc] init];
             alertViewController_showed = self;
-            alertView_ = [ [((UIViewController*)rootView) view] viewWithTag: 2100 ]; // ::
+            alertView_ = [ [((UIViewController*)rootView) view] viewWithTag: 2100 ];
+            // ::
             if(alertView_ == nil ){
                 alertView_ = [[UIView alloc]initWithFrame:[[UIScreen mainScreen] bounds] ];
                 [[((UIViewController*)rootView) view] addSubview:alertView_];
@@ -194,47 +217,57 @@ static GNSUIAlertWindowViewController *alertViewController;
             
             [alertView_ setFrame:[[UIScreen mainScreen] bounds] ];
             
-            [alertView_ setBackgroundColor:[UIColor colorWithHue:0.6 saturation:0.8 brightness:0.8 alpha:0.8]];
-            /*
-             UIButton *abortBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-             abortBtn.layer.cornerRadius = CGRectGetHeight([abortBtn bounds]) / 2.0 ;
-             [abortBtn setBackgroundColor:[UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1]];
-             [abortBtn setTitle:@"OK" forState:UIControlStateNormal];
-             
-             [abortBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-             
-             [[abortBtn titleLabel] setFont:[UIFont systemFontOfSize:21]];
-             
-             [abortBtn setFrame:CGRectMake(  (CGRectGetWidth([[UIScreen mainScreen] bounds] )/2) - 100 ,  CGRectGetHeight([[UIScreen mainScreen] bounds] )  - 80, 200, 60)];
-             [abortBtn setUserInteractionEnabled:YES];
-             [abortBtn addTarget:alertViewController action:@selector(invokeBtn) forControlEvents:UIControlEventTouchDown];
-             
-             [alertView_ addSubview: abortBtn];
-             */
+            [alertView_ setBackgroundColor:[UIColor colorWithWhite:1.0 alpha:0.8]] ; // :: [UIColor colorWithHue:0.6 saturation:0.8 brightness:0.8 alpha:0.8];
+            
             int widthlable =  (  CGRectGetWidth([[UIScreen mainScreen] bounds] ) - 40 );
-            alertView_label = [[UILabel alloc] initWithFrame:CGRectMake(  ( CGRectGetWidth([[UIScreen mainScreen] bounds] ) / 2) - ( widthlable / 2 ) , 60, widthlable , 120)];
-            alertView_label.backgroundColor = [UIColor clearColor];
-            alertView_label.textColor = [UIColor whiteColor];
-            alertView_label.font = [UIFont boldSystemFontOfSize: 17];
-            alertView_label.text = message;
-            alertView_label.numberOfLines = 4;
-            alertView_label.textAlignment = NSTextAlignmentCenter;
             
             
-            [alertView_ addSubview: alertView_label];
+            
+            alertView_icon = [[UILabel alloc] initWithFrame:CGRectMake(  ( CGRectGetWidth([[UIScreen mainScreen] bounds] ) / 2) - ( widthlable / 2 ) , 40 , widthlable , 120)];
+            
+            
+            
+            alertView_title = [[UILabel alloc] initWithFrame:CGRectMake(  ( CGRectGetWidth([[UIScreen mainScreen] bounds] ) / 2) - ( widthlable / 2 ) , CGRectGetHeight([alertView_icon frame]) +40 , widthlable , 120)];
+            
+            alertView_title.backgroundColor = [UIColor clearColor];
+            alertView_title.textColor = [UIColor colorWithWhite:0.1 alpha:1.0];
+            alertView_title.font = [UIFont boldSystemFontOfSize: 17];
+            alertView_title.text = title;
+            alertView_title.numberOfLines = 1;
+            alertView_title.textAlignment = NSTextAlignmentCenter;
+            
+            
+            alertView_message = [[UILabel alloc] initWithFrame:CGRectMake(  ( CGRectGetWidth([[UIScreen mainScreen] bounds] ) / 2) - ( widthlable / 2 ) , CGRectGetHeight([alertView_title frame]) +40 , widthlable , 120)];
+            alertView_message.backgroundColor = [UIColor clearColor];
+            alertView_message.textColor = [UIColor colorWithWhite:0.1 alpha:1.0];
+            alertView_message.font = [UIFont boldSystemFontOfSize: 17];
+            alertView_message.text = message;
+            alertView_message.numberOfLines = 4;
+            alertView_message.textAlignment = NSTextAlignmentCenter;
+            
+            
+            
+            [alertView_ addSubview: alertView_icon];
+            
+            [alertView_ addSubview: alertView_title];
+            
+            [alertView_ addSubview: alertView_message];
+            
             [alertViewController setView: alertView_];
             
+            actionsBtnsColor = [usePersonnalisedParams objectForKey:@"UIControlColor"];
+            actionsBtnsColor = ( (actionsBtnsColor == nil)? [NSMutableArray array]: actionsBtnsColor);
             
         }else{
             alertViewController_showed =  (id)   [UIAlertController
                                                   alertControllerWithTitle: title
                                                   message:message
-                                                  preferredStyle:alertStyle];
+                                                  preferredStyle:ui_preferredStyle];
             
             
         }
         
-        NSLog(@" dismiss  ?? ::: %@ ", [usePersonnalisedParams objectForKey:@"dismissViewControllerAnimated"]);
+        // ::  NSLog(@" dismiss  ?? ::: %@ ", [usePersonnalisedParams objectForKey:@"dismissViewControllerAnimated"]);
         id dismissableBtnsPrefs = nil;
         if ( ((BOOL)usePersonnalisedParams) != NO && [usePersonnalisedParams isKindOfClass: [NSDictionary class] ] && (nil != [usePersonnalisedParams objectForKey:@"dismissViewControllerAnimated"] ) ){
             
@@ -256,9 +289,12 @@ static GNSUIAlertWindowViewController *alertViewController;
             for (id actionsIn in actions) {
                 if([actionsIn isKindOfClass:[UIAlertAction class]])
                 {
-                    bool btnDoDismiss = (bool) ( (nil != dismissableBtnsPrefs && [dismissableBtnsPrefs count] && ( [dismissableBtnsPrefs count] >= idxBtn) ) ?
-                    ([[dismissableBtnsPrefs objectAtIndex:idxBtn] isEqualToString:@"YES"]) : dismissAtClick );
-                    NSLog(@" should dissmis :: %d ", btnDoDismiss);
+                    // configure if button should Dismiss Presented ViewController, the one call this Alert Class
+                    bool btnDoDismiss = (bool) ( (nil != dismissableBtnsPrefs && ([dismissableBtnsPrefs count] >=1) && ( [dismissableBtnsPrefs count] >= idxBtn) && [ [dismissableBtnsPrefs objectAtIndex: idxBtn ] isKindOfClass:[NSString class]] ) ?
+                                                ([ ((NSString*)[dismissableBtnsPrefs objectAtIndex:idxBtn]) isEqualToString:@"YES"]) : dismissAtClick );
+                    
+                    // :: NSLog(@" should dissmis :: %d ", btnDoDismiss);
+                    // self is the presented ViewController
                     if(alertViewController_showed != self)
                     {
                         void (^actionsIncompletionEvent) (UIAlertAction * _Nonnull action) = (( nil !=   [actionsIn valueForKey:@"_handler"] )? [actionsIn valueForKey:@"_handler"]:  [actionsIn valueForKey:@"handler"]) ;
@@ -271,7 +307,7 @@ static GNSUIAlertWindowViewController *alertViewController;
                             if(actionsIncompletionEvent != nil)
                                 actionsIncompletionEvent(action);
                             
-                            NSLog(@" did should dissmis :: %d ", btnDoDismiss);
+                            // :: NSLog(@" did should dissmis :: %d ", btnDoDismiss);
                             
                             if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && btnDoDismiss){
                                 [windowAlertCntl_presented dismissViewControllerAnimated:YES completion:^{
@@ -283,7 +319,7 @@ static GNSUIAlertWindowViewController *alertViewController;
                         
                         [alertViewController_showed addAction: addactionsIn];
                     }else{
-                        [alertViewController_showed addAction: actionsIn :btnDoDismiss];
+                        [alertViewController_showed addAction: actionsIn : ((btnDoDismiss)? @"YES": @"NO")];
                     }
                     
                     idxBtn  ++;
@@ -378,72 +414,127 @@ static GNSUIAlertWindowViewController *alertViewController;
     }
 }
 
-
+#pragma mark Setup Actions on Buttons, recreate UIAlert Behaviours
 - (void)addAction:(UIAlertAction *)action
 {
-    
+    [self addAction: action :((dismissAtClick)? @"YES": @"NO")];
 }
--(void)addAction:(nullable UIAlertAction *)action :(BOOL)shouldBtnDoDismiss
+
+/* **************** ****************
+ // shouldBtnDoDismiss -->> NSArray don't store BOOL type, so we use it's representation
+ ****************  **************** */
+-(void)addAction:(nullable UIAlertAction *)action :(  NSString* _Nullable )shouldBtnDoDismiss
 {
     
     if(alertViewController ==nil) alertViewController = self; // [[GNSUIAlertWindowViewController alloc]init];
     if(actionsBtns == nil) actionsBtns = [NSMutableArray array];
     if(_actions == nil) _actions = [NSMutableArray array];
-    UIButton *actionAddedBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    actionAddedBtn.layer.cornerRadius = CGRectGetHeight([actionAddedBtn bounds]) / 2.0 ;
-    [actionAddedBtn setBackgroundColor:[UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1]];
-    [actionAddedBtn setTitle: action.title forState:UIControlStateNormal];
-    
-    [actionAddedBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    
-    [[actionAddedBtn titleLabel] setFont:[UIFont systemFontOfSize:21]];
-    
-    [actionAddedBtn setFrame:CGRectMake(  0 ,  CGRectGetHeight([[self view] bounds] )  - 80, 200, 60)];
-    
-    [actionAddedBtn setUserInteractionEnabled:YES];
-    
-    [actionAddedBtn setTag: (2100 + ((int)[_actions count]) )];
-    
-    [actionAddedBtn addTarget:self action:@selector(invokeSender:) forControlEvents:UIControlEventTouchDown];
-    
-    [actionsBtns addObject: actionAddedBtn ];
-    [[self view] addSubview: actionAddedBtn];
-    
-    [_actions addObject: action ];
-    
-    // marge 10 minimum;;
-    
-    float btnWidth = ((float)(CGRectGetWidth([[self view] bounds]) / (float)[_actions count])) - ( ( ((int)[_actions count]) >1) ?
-                                                                                                  ( ( ((int)[_actions count]) >2)  ? 10 : 20)
-                                                                                                  : 40 ) ;
-    
-    float spaceBeetween = ( CGRectGetWidth([[self view] bounds]) - (btnWidth * ([_actions count]) ) ) / ((float)[_actions count]) ;
-    
-    // :: NSLog(@" %@ :::: %d :: %@ :::: %@ ", NSStringFromSelector(_cmd), btnWidth, actionsBtns , _actions);
-    
-    for (id btnTrack in actionsBtns ) {
-        int idx = (((int)[btnTrack tag]) - 2100);
-        // :: ((int)[_actions count]) == 1 ----->> (spaceBeetween / 2)
-        // :: 10 -- wwwww -- 10 ::
-        // :: ------>> ( (btnWidth) *  idx) ------>>
-        // :: ((int)[_actions count]) > 1 ----->> (spaceBeetween)
-        // :: 10 -- wwwww -- 10 :: 10 -- wwwww -- 10 :: 10 -- wwwww -- 10 :: 10 -- wwwww -- 10 ::
+    if(_actionsDissmeable == nil) _actionsDissmeable = [NSMutableArray array];
+    @try {
         
-        // :: ((int)[_actions count]) > 1 ----->> (spaceBeetween)
-        // :: 20 -- wwwww -- 10 :: 10 -- wwwww -- 20 ::
-        int margeRight =  (spaceBeetween /2) * ((idx==0)?1: idx+1);
         
-        if(idx>0)
-            margeRight = ([[actionsBtns objectAtIndex: (idx -1) ] frame]).origin.x + btnWidth + (spaceBeetween );
+        UIButton *actionAddedBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
         
-        [btnTrack setFrame: CGRectMake(   margeRight   ,
-                                       ([actionAddedBtn frame]).origin.y,
-                                       btnWidth,
-                                       CGRectGetHeight([actionAddedBtn frame]) )];
-        // ::
-        NSLog(@" %d :: frame btn .... : %f :: %d :: frame view :: %f :: %@", idx, spaceBeetween, margeRight, CGRectGetWidth([[self view] bounds] ), NSStringFromCGRect([btnTrack frame] ));
+        
+        [actionAddedBtn setTitle: action.title forState:UIControlStateNormal];
+        
+        
+        [[actionAddedBtn titleLabel] setFont:[UIFont systemFontOfSize:17]];
+        
+        [actionAddedBtn setUserInteractionEnabled:YES];
+        
+        [actionAddedBtn setTag: (2100 + ((int)[_actions count]) )];
+        
+        [actionAddedBtn addTarget:self action:@selector(invokeSender:) forControlEvents:UIControlEventTouchDown];
+        
+        
+        
+        [actionAddedBtn setBackgroundColor: ( ( [actionsBtnsColor count] >= 1
+                                               && ( [_actions count] <= [actionsBtnsColor count] )
+                                               && ( [ [actionsBtnsColor objectAtIndex: [_actions count] ] isKindOfClass: [UIColor class] ]) )?
+                                             
+                                             ([actionsBtnsColor objectAtIndex: [_actions count] ]) : [UIColor clearColor] ) ];
+        
+        // :: Red Color :: [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1]
+        
+        [actionAddedBtn setFrame:CGRectMake(  0 ,  CGRectGetHeight([[self view] bounds] )  - 80, 200, ((ui_preferredStyle == UIAlertControllerStyleActionSheet)?60:40))];
+        
+        actionAddedBtn.layer.cornerRadius = (float)(CGRectGetHeight([ actionAddedBtn frame]) / 2.0);
+        
+        // :: actionAddedBtn.layer.borderColor = [[UIColor colorWithRed:0/255.0 green:153/255.0 blue:81/255.0 alpha:1] CGColor];
+        actionAddedBtn.layer.borderColor = [[UIColor blackColor] CGColor];
+        
+        [actionAddedBtn.layer setBorderWidth: 1.0];
+        actionAddedBtn.clipsToBounds = YES;
+        
+        UIColor* titledcolor = [[UIColor blackColor] readableForegroundColorForBackgroundColor: [actionAddedBtn backgroundColor] ];
+        [actionAddedBtn setTitleColor: titledcolor  forState:UIControlStateNormal];
+        
+        
+        
+        
+        [actionsBtns addObject: actionAddedBtn ];
+        [[self view] addSubview: actionAddedBtn];
+        
+        [_actions addObject: action ];
+        [_actionsDissmeable addObject: shouldBtnDoDismiss];
+        
+        // marge 10 minimum;;
+        
+        float btnWidth = ((float)(CGRectGetWidth([[self view] bounds]) / (float)[_actions count])) - ( ( ((int)[_actions count]) >1) ?
+                                                                                                      ( ( ((int)[_actions count]) >2)  ? 10 : 20)
+                                                                                                      : 40 ) ;
+        
+        float spaceBeetween = ( CGRectGetWidth([[self view] bounds]) - (btnWidth * ([_actions count]) ) ) / ((float)[_actions count]) ;
+        float btnOrigin = 0;
+        // :: NSLog(@" %@ :::: %f :: %@ :::: %@ ", NSStringFromSelector(_cmd), btnWidth, actionsBtns , _actions);
+        
+        
+        for (id btnTrack in actionsBtns ) {
+            if(btnWidth < 80)
+                (((UIButton*)btnTrack).layer).cornerRadius = (float)(CGRectGetHeight([ ((UIButton*)btnTrack) frame]) / 2.50);
+            
+            int idx = (((int)[btnTrack tag]) - 2100);
+            // :: ((int)[_actions count]) == 1 ----->> (spaceBeetween / 2)
+            // :: 10 -- wwwww -- 10 ::
+            // :: ------>> ( (btnWidth) *  idx) ------>>
+            // :: ((int)[_actions count]) > 1 ----->> (spaceBeetween)
+            // :: 10 -- wwwww -- 10 :: 10 -- wwwww -- 10 :: 10 -- wwwww -- 10 :: 10 -- wwwww -- 10 ::
+            
+            // :: ((int)[_actions count]) > 1 ----->> (spaceBeetween)
+            // :: 20 -- wwwww -- 10 :: 10 -- wwwww -- 20 ::
+            int margeRight =  (spaceBeetween /2) * ((idx==0)?1: idx+1);
+            
+            if(idx>0)
+                margeRight = ([[actionsBtns objectAtIndex: (idx -1) ] frame]).origin.x + btnWidth + (spaceBeetween );
+            
+            if( ui_preferredStyle == UIAlertControllerStyleAlert)
+            {
+                margeRight = 20;
+                btnWidth = CGRectGetWidth([[self view] bounds]) - (margeRight*2);
+                
+                btnOrigin = CGRectGetHeight([[self view] bounds]) -  (  ( CGRectGetHeight([actionAddedBtn frame]) + margeRight ) * [_actions count]) ;
+                
+                btnOrigin += (  ( CGRectGetHeight([actionAddedBtn frame]) + margeRight ) * idx);
+                
+            } else {
+                
+                btnOrigin =  ([actionAddedBtn frame]).origin.y;
+            }
+            
+            [btnTrack setFrame: CGRectMake(  margeRight,
+                                           btnOrigin,
+                                           
+                                           btnWidth,
+                                           CGRectGetHeight([actionAddedBtn frame]) )];
+            // :: NSLog(@" %d :: frame btn .... : %f :: %d :: frame view :: %f :: %@", idx, spaceBeetween, margeRight, CGRectGetWidth([[self view] bounds] ), NSStringFromCGRect([btnTrack frame] ));
+        }
+    } @catch (NSException *exception) {
+        NSLog(@"%@ :: Error :: exception :: \n %@", NSStringFromSelector(_cmd), exception);
+        ;;
+    } @finally {
+        ;;
     }
-    
     
 }
 #pragma mark ---------
@@ -452,19 +543,28 @@ static GNSUIAlertWindowViewController *alertViewController;
     if(alertViewController ==nil) alertViewController = self;
     if(actionsBtns == nil) actionsBtns = [NSMutableArray array];
     if(_actions == nil) _actions = [NSMutableArray array];
+    if(_actionsDissmeable == nil) _actionsDissmeable = [NSMutableArray array];
+    
     @try {
-        UIAlertAction* actionsBtnsAlert = ((UIAlertAction*)[_actions objectAtIndex: (((int)[sender tag]) - 2100) ]) ;
+        int idxBtn = (((int)[sender tag]) - 2100);
+        UIAlertAction* actionsBtnsAlert = ((UIAlertAction*)[_actions objectAtIndex: idxBtn ]) ;
         //      NSLog(@" %@ :::: %ld :: %@ :::: %@  :::: %@ ", NSStringFromSelector(_cmd), [sender tag], sender, [actionsBtnsAlert valueForKey:@"handler"], [actionsBtnsAlert valueForKey:@"_handler"]);
         void (^completionEvent) (UIAlertAction * _Nonnull action) = (( nil !=   [actionsBtnsAlert valueForKey:@"_handler"] )? [actionsBtnsAlert valueForKey:@"_handler"]:  [actionsBtnsAlert valueForKey:@"handler"]) ;
         
         id windowAlertCntl = alertViewController;
         id windowAlertCntl_presented = windowviewcntl_presented;
         
+        BOOL dismissableViewActionBtn = dismissAtClick;
+        
+        dismissableViewActionBtn = ((idxBtn <= [_actionsDissmeable count] && ([_actionsDissmeable count] >=1) && [ [_actionsDissmeable objectAtIndex: idxBtn ] isKindOfClass:[NSString class]]) ? ((BOOL)[[_actionsDissmeable objectAtIndex: idxBtn ]  isEqualToString:@"YES"] ) : dismissableViewActionBtn) ;
+        
+        // :: NSLog(@" invoke :: should dissmis :: %d ", dismissableViewActionBtn);
+        
         void (^invokableBlock) (void) = ^(void){
             [windowAlertCntl  dismissViewControllerAnimated:YES completion:^{
                 ;;
             }];
-            if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && dismissAtClick){
+            if(windowAlertCntl_presented && [windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && dismissableViewActionBtn){
                 [windowAlertCntl_presented dismissViewControllerAnimated:YES completion:^{
                     ;;
                 }];
@@ -481,7 +581,8 @@ static GNSUIAlertWindowViewController *alertViewController;
                 [windowAlertCntl  dismissViewControllerAnimated:YES completion:^{
                     ;;
                 }];
-                if([windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && dismissAtClick){
+                // dismiss alert controller
+                if(windowAlertCntl_presented && [windowAlertCntl_presented isKindOfClass:[UINavigationController class]] && dismissableViewActionBtn){
                     [windowAlertCntl_presented dismissViewControllerAnimated:YES completion:^{
                         ;;
                     }];
@@ -511,6 +612,7 @@ static GNSUIAlertWindowViewController *alertViewController;
     if(alertViewController ==nil) alertViewController = self;
     if(actionsBtns == nil) actionsBtns = [NSMutableArray array];
     if(_actions == nil) _actions = [NSMutableArray array];
+    if(_actionsDissmeable == nil) _actionsDissmeable = [NSMutableArray array];
     return _actions;
 }
 
@@ -520,8 +622,110 @@ static GNSUIAlertWindowViewController *alertViewController;
     if(alertViewController ==nil) alertViewController = self;
     if(actionsBtns == nil) actionsBtns = [NSMutableArray array];
     if(_actions == nil) _actions = [NSMutableArray array];
+    if(_actionsDissmeable == nil) _actionsDissmeable = [NSMutableArray array];
     return (NSArray*)actionsBtns;
+}
+-(_Nonnull id)delegate
+{
+    return self;
+}
+#pragma mark ---------- UI Labels & Messages References
+-(void)setAlertView_message:(NSAttributedString*)message
+{
+    @try {
+        [alertView_message setAttributedText: message];
+    } @catch (NSException *exception) {
+        NSLog(@"%@ :: Error :: exception :: \n %@", NSStringFromSelector(_cmd), exception);
+        ;;
+    } @finally {
+        ;;
+    }
+    // :: (BOOL)[  alertView_message.text isEqualToString: message.string ];
+}
+-(void)setAlertView_title:(NSAttributedString*)message
+{
+    @try {
+        
+        [alertView_title setAttributedText: message];
+    } @catch (NSException *exception) {
+        NSLog(@"%@ :: Error :: exception :: \n %@", NSStringFromSelector(_cmd), exception);
+        ;;
+    } @finally {
+        ;;
+    }
+    // :: (BOOL)[  alertView_title.text isEqualToString: message.string ];
+}
+#pragma mark ---------- UI Elements Labels & Messages References
+
+-(id)label
+{
+    return alertView_title;
+}
+-(id)message
+{
+    return alertView_message;
+}
+-(id)alertView_icon
+{
+    return alertView_icon;
+}
+@end
+
+
+@implementation UIColor (ColorTextForeGroundColor)
+
+- (UIColor  * _Nonnull )readableForegroundColorForBackgroundColor:(UIColor*)backgroundColor {
+    size_t count = CGColorGetNumberOfComponents(backgroundColor.CGColor);
+    const CGFloat *componentColors = CGColorGetComponents(backgroundColor.CGColor);
+    
+    CGFloat darknessScore = 0;
+    if (count == 2) {
+        darknessScore = (((componentColors[0]*255) * 299) + ((componentColors[0]*255) * 587) + ((componentColors[0]*255) * 114)) / 1000;
+    } else if (count == 4) {
+        darknessScore = (((componentColors[0]*255) * 299) + ((componentColors[1]*255) * 587) + ((componentColors[2]*255) * 114)) / 1000;
+    }
+    
+    if (darknessScore < 125) {
+        return [UIColor blackColor];
+    }
+    
+    return [UIColor whiteColor];
 }
 
 @end
 
+
+/* ************** ************** ************** **************
+ // exemple
+  ************** ************** ************** **************
+ 
+[UIApplicationSharedDelegate showMessage:@"Aucun ajout" title:nil withActions: [NSArray arrayWithObjects:
+                                                                                [UIAlertAction actionWithTitle:@"OK" style: UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+    NSLog(@" :::: action ::: %@ ::: ",[self class]);
+    NSLog(@" :::: action ::ui:: %@ ::: ",action);
+    ;;
+}],
+                                                                                // :: [UIAlertAction actionWithTitle:@"View" style: UIAlertActionStyleDefault handler:nil],
+ 
+                                                                                   [UIAlertAction actionWithTitle:@"Retour" style: UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                                                                                 NSLog(@" :::: action 2 ::: %@ ::: ",[self class]);
+                                                                                 NSLog(@" :::: action 2 ::ui:: %@ ::: ",action);
+                                                                                 ;;
+                                                                                 }],
+                                                                                 
+                                                                                // :: [UIAlertAction actionWithTitle:@"4" style: UIAlertActionStyleDefault handler:nil]
+                                                                                  ,nil]
+ 
+                              completion:^(id actionHandler) {
+                                  // called when the alert is on screen
+                                  NSLog(@" ::::: %@  :::: %@ ", self, [[UIApplication sharedApplication] windows]);
+                               
+                                  
+                              } : [NSDictionary dictionaryWithObjectsAndKeys:@"YES", @"usePersonnalisedParams",
+                                   [NSArray arrayWithObjects:@"YES", @"NO",@"YES",@"NO", nil], @"dismissViewControllerAnimated",
+                                   [NSArray arrayWithObjects:
+                                    [UIColor colorWithRed:0/255.0 green:170/255.0 blue:255/255.0 alpha:1], @"--",@"--",@"--", nil], @"UIControlColor",
+                                   nil] ];
+
+  ************** ************** ************** **************
+  ************** ************** ************** ************** */
